@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -8,20 +8,66 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { trendingTopics, debateRooms, CATEGORIES } from "@/data/mockData";
+import { trendingTopics, CATEGORIES } from "@/data/mockData";
 import { Search, TrendingUp, Users, Plus, LogOut, Flame, Clock, CheckCircle2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
-const statusConfig = {
+interface RoomRow {
+  id: string;
+  topic: string;
+  description: string;
+  category: string;
+  host_id: string;
+  host_username: string;
+  host_avatar: string;
+  participant_count: number;
+  max_participants: number;
+  status: string;
+}
+
+const statusConfig: Record<string, { label: string; className: string }> = {
   live: { label: "Live", className: "bg-destructive/20 text-destructive border-destructive/30" },
   waiting: { label: "Waiting", className: "bg-accent/20 text-accent border-accent/30" },
   completed: { label: "Completed", className: "bg-muted text-muted-foreground border-border" },
 };
 
 const Dashboard = () => {
-  const { profile, signOut } = useAuth();
+  const { user, profile, signOut } = useAuth();
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
+  const [rooms, setRooms] = useState<RoomRow[]>([]);
+  const [myRooms, setMyRooms] = useState<RoomRow[]>([]);
+  const [loadingRooms, setLoadingRooms] = useState(true);
+
+  useEffect(() => {
+    const fetchRooms = async () => {
+      const { data } = await supabase.from("debate_rooms").select("*").order("created_at", { ascending: false });
+      if (data) setRooms(data as RoomRow[]);
+      setLoadingRooms(false);
+    };
+    fetchRooms();
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    const fetchMyRooms = async () => {
+      // Rooms I host or participate in
+      const { data: hosted } = await supabase.from("debate_rooms").select("*").eq("host_id", user.id);
+      const { data: participated } = await supabase.from("room_participants").select("room_id").eq("user_id", user.id);
+      
+      if (participated && participated.length > 0) {
+        const participatedIds = participated.map((p) => p.room_id);
+        const { data: joinedRooms } = await supabase.from("debate_rooms").select("*").in("id", participatedIds);
+        const all = [...(hosted || []), ...(joinedRooms || [])];
+        const unique = Array.from(new Map(all.map((r) => [r.id, r])).values());
+        setMyRooms(unique as RoomRow[]);
+      } else {
+        setMyRooms((hosted || []) as RoomRow[]);
+      }
+    };
+    fetchMyRooms();
+  }, [user]);
 
   const filteredTopics = trendingTopics.filter(
     (t) =>
@@ -29,11 +75,46 @@ const Dashboard = () => {
       t.title.toLowerCase().includes(search.toLowerCase())
   );
 
-  const filteredRooms = debateRooms.filter(
+  const filteredRooms = rooms.filter(
     (r) =>
       (selectedCategory === "All" || r.category === selectedCategory) &&
       r.topic.toLowerCase().includes(search.toLowerCase())
   );
+
+  const filteredMyRooms = myRooms.filter(
+    (r) =>
+      (selectedCategory === "All" || r.category === selectedCategory) &&
+      r.topic.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const RoomCard = ({ room, index }: { room: RoomRow; index: number }) => {
+    const status = statusConfig[room.status] || statusConfig.waiting;
+    return (
+      <motion.div key={room.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}>
+        <Card className="cursor-pointer transition-colors hover:bg-card/80" onClick={() => navigate(`/room/${room.id}`)}>
+          <CardContent className="space-y-3 p-4">
+            <div className="flex items-start justify-between">
+              <h3 className="font-display text-sm font-semibold text-foreground">{room.topic}</h3>
+              <Badge variant="outline" className={status.className}>{status.label}</Badge>
+            </div>
+            <p className="text-xs text-muted-foreground line-clamp-2">{room.description}</p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Avatar className="h-5 w-5">
+                  <AvatarImage src={room.host_avatar} />
+                  <AvatarFallback>{room.host_username?.[0]?.toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <span className="text-xs text-muted-foreground">{room.host_username}</span>
+              </div>
+              <span className="text-xs text-muted-foreground">
+                {room.participant_count}/{room.max_participants} joined
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -63,22 +144,11 @@ const Dashboard = () => {
         <div className="mb-6 space-y-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search topics and rooms..."
-              className="pl-10"
-            />
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search topics and rooms..." className="pl-10" />
           </div>
           <div className="flex gap-2 overflow-x-auto pb-2">
             {CATEGORIES.map((cat) => (
-              <Button
-                key={cat}
-                size="sm"
-                variant={selectedCategory === cat ? "default" : "secondary"}
-                onClick={() => setSelectedCategory(cat)}
-                className="shrink-0 rounded-full text-xs"
-              >
+              <Button key={cat} size="sm" variant={selectedCategory === cat ? "default" : "secondary"} onClick={() => setSelectedCategory(cat)} className="shrink-0 rounded-full text-xs">
                 {cat}
               </Button>
             ))}
@@ -92,7 +162,7 @@ const Dashboard = () => {
             <TabsTrigger value="myrooms" className="gap-1.5"><Clock className="h-3.5 w-3.5" />My Rooms</TabsTrigger>
           </TabsList>
 
-          {/* Trending Topics */}
+          {/* Trending Topics — still mocked */}
           <TabsContent value="trending">
             <div className="space-y-3">
               {filteredTopics.length === 0 ? (
@@ -100,7 +170,7 @@ const Dashboard = () => {
               ) : (
                 filteredTopics.map((topic, i) => (
                   <motion.div key={topic.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-                    <Card className="cursor-pointer transition-colors hover:bg-card/80" onClick={() => navigate(`/room/${debateRooms[0]?.id || "r1"}`)}>
+                    <Card className="cursor-pointer transition-colors hover:bg-card/80">
                       <CardContent className="flex items-center justify-between p-4">
                         <div className="flex-1 space-y-1">
                           <div className="flex items-center gap-2">
@@ -120,58 +190,42 @@ const Dashboard = () => {
             </div>
           </TabsContent>
 
-          {/* Explore Rooms */}
+          {/* Explore Rooms — from database */}
           <TabsContent value="explore">
             <div className="mb-4 flex justify-end">
               <Button onClick={() => navigate("/create-room")} className="gap-2 rounded-xl">
                 <Plus className="h-4 w-4" /> Create Room
               </Button>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              {filteredRooms.length === 0 ? (
-                <div className="col-span-full py-16 text-center text-muted-foreground">No rooms found</div>
-              ) : (
-                filteredRooms.map((room, i) => {
-                  const status = statusConfig[room.status];
-                  return (
-                    <motion.div key={room.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-                      <Card className="cursor-pointer transition-colors hover:bg-card/80" onClick={() => navigate(`/room/${room.id}`)}>
-                        <CardContent className="space-y-3 p-4">
-                          <div className="flex items-start justify-between">
-                            <h3 className="font-display text-sm font-semibold text-foreground">{room.topic}</h3>
-                            <Badge variant="outline" className={status.className}>{status.label}</Badge>
-                          </div>
-                          <p className="text-xs text-muted-foreground line-clamp-2">{room.description}</p>
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <Avatar className="h-5 w-5">
-                                <AvatarImage src={room.hostAvatar} />
-                              </Avatar>
-                              <span className="text-xs text-muted-foreground">{room.host}</span>
-                            </div>
-                            <span className="text-xs text-muted-foreground">
-                              {room.participantCount}/{room.maxParticipants} joined
-                            </span>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </motion.div>
-                  );
-                })
-              )}
-            </div>
+            {loadingRooms ? (
+              <div className="py-16 text-center text-muted-foreground">Loading rooms...</div>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {filteredRooms.length === 0 ? (
+                  <div className="col-span-full py-16 text-center text-muted-foreground">No rooms found. Create one!</div>
+                ) : (
+                  filteredRooms.map((room, i) => <RoomCard key={room.id} room={room} index={i} />)
+                )}
+              </div>
+            )}
           </TabsContent>
 
-          {/* My Rooms */}
+          {/* My Rooms — from database */}
           <TabsContent value="myrooms">
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <CheckCircle2 className="mb-4 h-12 w-12 text-muted-foreground/40" />
-              <h3 className="font-display text-lg font-semibold text-foreground">No Rooms Yet</h3>
-              <p className="mt-1 text-sm text-muted-foreground">Create or join a debate to get started</p>
-              <Button onClick={() => navigate("/create-room")} className="mt-4 gap-2 rounded-xl">
-                <Plus className="h-4 w-4" /> Create Room
-              </Button>
-            </div>
+            {filteredMyRooms.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <CheckCircle2 className="mb-4 h-12 w-12 text-muted-foreground/40" />
+                <h3 className="font-display text-lg font-semibold text-foreground">No Rooms Yet</h3>
+                <p className="mt-1 text-sm text-muted-foreground">Create or join a debate to get started</p>
+                <Button onClick={() => navigate("/create-room")} className="mt-4 gap-2 rounded-xl">
+                  <Plus className="h-4 w-4" /> Create Room
+                </Button>
+              </div>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {filteredMyRooms.map((room, i) => <RoomCard key={room.id} room={room} index={i} />)}
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </main>
