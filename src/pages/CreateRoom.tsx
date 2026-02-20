@@ -83,6 +83,9 @@ const CreateRoom = () => {
                   <Copy className="h-4 w-4" />
                 </Button>
               </div>
+              <Button onClick={() => navigate(`/room/new-room-${Date.now()}`)} className="w-full glow-primary">
+                Enter Room
+              </Button>
               <Button onClick={() => navigate("/dashboard")} variant="secondary" className="w-full">
                 Go to Dashboard
               </Button>
