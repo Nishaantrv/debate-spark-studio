@@ -66,6 +66,7 @@ export type Database = {
           id: string
           max_participants: number
           participant_count: number
+          room_code: string
           status: string
           topic: string
           updated_at: string
@@ -80,6 +81,7 @@ export type Database = {
           id?: string
           max_participants?: number
           participant_count?: number
+          room_code?: string
           status?: string
           topic: string
           updated_at?: string
@@ -94,6 +96,7 @@ export type Database = {
           id?: string
           max_participants?: number
           participant_count?: number
+          room_code?: string
           status?: string
           topic?: string
           updated_at?: string
@@ -164,7 +167,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      generate_room_code: { Args: never; Returns: string }
     }
     Enums: {
       [_ in never]: never

@@ -21,9 +21,8 @@ const CreateRoom = () => {
   const [maxParticipants, setMaxParticipants] = useState("6");
   const [created, setCreated] = useState(false);
   const [roomId, setRoomId] = useState("");
+  const [roomCode, setRoomCode] = useState("");
   const [loading, setLoading] = useState(false);
-
-  const inviteLink = `${window.location.origin}/room/${roomId}`;
 
   const handleCreate = async () => {
     if (!topic.trim() || !category) {
@@ -44,7 +43,7 @@ const CreateRoom = () => {
         host_avatar: profile.avatar_url,
         max_participants: parseInt(maxParticipants),
       })
-      .select("id")
+      .select("id, room_code")
       .single();
 
     if (error) {
@@ -61,6 +60,7 @@ const CreateRoom = () => {
     });
 
     setRoomId(data.id);
+    setRoomCode(data.room_code);
     setCreated(true);
     setLoading(false);
     toast.success("Room created!");
@@ -106,21 +106,23 @@ const CreateRoom = () => {
               </Button>
             </div>
           ) : (
-            <Card className="space-y-4 p-6">
+            <Card className="space-y-5 p-6 text-center">
               <h2 className="font-display text-lg font-semibold text-foreground">Room Created!</h2>
-              <p className="text-sm text-muted-foreground">Share this invite link:</p>
-              <div className="flex items-center gap-2">
-                <Input value={inviteLink} readOnly className="text-xs" />
-                <Button
-                  size="icon"
-                  variant="outline"
-                  onClick={() => {
-                    navigator.clipboard.writeText(inviteLink);
-                    toast.success("Link copied!");
-                  }}
-                >
-                  <Copy className="h-4 w-4" />
-                </Button>
+              <div>
+                <p className="text-sm text-muted-foreground mb-2">Share this room code:</p>
+                <div className="flex items-center justify-center gap-3">
+                  <span className="font-mono text-3xl font-bold tracking-[0.3em] text-primary">{roomCode}</span>
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    onClick={() => {
+                      navigator.clipboard.writeText(roomCode);
+                      toast.success("Code copied!");
+                    }}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
               <Button onClick={() => navigate(`/room/${roomId}`)} className="w-full glow-primary">
                 Enter Room

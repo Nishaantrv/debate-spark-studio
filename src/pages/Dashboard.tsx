@@ -9,7 +9,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { trendingTopics, CATEGORIES } from "@/data/mockData";
-import { Search, TrendingUp, Users, Plus, LogOut, Flame, Clock, CheckCircle2 } from "lucide-react";
+import { Search, TrendingUp, Users, Plus, LogOut, Flame, Clock, CheckCircle2, ArrowRight, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
 interface RoomRow {
@@ -39,6 +40,39 @@ const Dashboard = () => {
   const [rooms, setRooms] = useState<RoomRow[]>([]);
   const [myRooms, setMyRooms] = useState<RoomRow[]>([]);
   const [loadingRooms, setLoadingRooms] = useState(true);
+  const [joinCode, setJoinCode] = useState("");
+  const [joiningByCode, setJoiningByCode] = useState(false);
+
+  const handleJoinByCode = async () => {
+    const code = joinCode.trim().toUpperCase();
+    if (code.length !== 6) {
+      toast.error("Please enter a valid 6-character room code");
+      return;
+    }
+    setJoiningByCode(true);
+    const { data, error } = await supabase
+      .from("debate_rooms")
+      .select("id")
+      .eq("room_code", code)
+      .single();
+    setJoiningByCode(false);
+    if (error || !data) {
+      toast.error("Room not found. Check the code and try again.");
+      return;
+    }
+    navigate(`/room/${data.id}`);
+  };
+
+  const handleDeleteRoom = async (roomId: string) => {
+    const { error } = await supabase.from("debate_rooms").delete().eq("id", roomId);
+    if (error) {
+      toast.error("Failed to delete room");
+      return;
+    }
+    toast.success("Room deleted");
+    setMyRooms((prev) => prev.filter((r) => r.id !== roomId));
+    setRooms((prev) => prev.filter((r) => r.id !== roomId));
+  };
 
   useEffect(() => {
     const fetchRooms = async () => {
@@ -87,7 +121,7 @@ const Dashboard = () => {
       r.topic.toLowerCase().includes(search.toLowerCase())
   );
 
-  const RoomCard = ({ room, index }: { room: RoomRow; index: number }) => {
+  const RoomCard = ({ room, index, showDelete }: { room: RoomRow; index: number; showDelete?: boolean }) => {
     const status = statusConfig[room.status] || statusConfig.waiting;
     return (
       <motion.div key={room.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }}>
@@ -110,6 +144,16 @@ const Dashboard = () => {
                 {room.participant_count}/{room.max_participants} joined
               </span>
             </div>
+            {showDelete && room.host_id === user?.id && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full text-destructive hover:text-destructive hover:bg-destructive/10"
+                onClick={(e) => { e.stopPropagation(); handleDeleteRoom(room.id); }}
+              >
+                <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete Room
+              </Button>
+            )}
           </CardContent>
         </Card>
       </motion.div>
@@ -140,6 +184,23 @@ const Dashboard = () => {
       </header>
 
       <main className="mx-auto max-w-5xl px-4 py-6">
+        {/* Join by Code */}
+        <Card className="mb-6">
+          <CardContent className="flex items-center gap-3 p-4">
+            <Input
+              value={joinCode}
+              onChange={(e) => setJoinCode(e.target.value.toUpperCase().slice(0, 6))}
+              onKeyDown={(e) => e.key === "Enter" && handleJoinByCode()}
+              placeholder="Enter room code"
+              className="font-mono text-center tracking-widest uppercase max-w-[180px]"
+              maxLength={6}
+            />
+            <Button onClick={handleJoinByCode} disabled={joiningByCode} className="gap-2">
+              {joiningByCode ? "Joining..." : "Join Room"} <ArrowRight className="h-4 w-4" />
+            </Button>
+          </CardContent>
+        </Card>
+
         {/* Search & Filter */}
         <div className="mb-6 space-y-4">
           <div className="relative">
@@ -223,7 +284,7 @@ const Dashboard = () => {
               </div>
             ) : (
               <div className="grid gap-4 sm:grid-cols-2">
-                {filteredMyRooms.map((room, i) => <RoomCard key={room.id} room={room} index={i} />)}
+                {filteredMyRooms.map((room, i) => <RoomCard key={room.id} room={room} index={i} showDelete />)}
               </div>
             )}
           </TabsContent>

@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, Send, Mic, Timer, AlertTriangle, Trophy, Star, Users } from "lucide-react";
+import { ArrowLeft, Send, Mic, Timer, AlertTriangle, Trophy, Star, Users, Copy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
@@ -22,6 +22,7 @@ interface RoomData {
   max_participants: number;
   participant_count: number;
   status: string;
+  room_code: string;
 }
 
 interface Message {
@@ -171,6 +172,13 @@ const DebateRoom = () => {
             <h1 className="font-display text-sm font-semibold text-foreground">{room.topic}</h1>
             <div className="mt-1 flex items-center justify-center gap-2">
               <Badge variant="outline" className="text-xs">{room.category}</Badge>
+              <button
+                onClick={() => { navigator.clipboard.writeText(room.room_code); toast("Code copied!"); }}
+                className="flex items-center gap-1 rounded bg-primary/10 px-2 py-0.5 text-xs font-mono font-semibold text-primary hover:bg-primary/20 transition-colors"
+                title="Click to copy room code"
+              >
+                {room.room_code} <Copy className="h-3 w-3" />
+              </button>
               <span className="flex items-center gap-1 text-xs text-muted-foreground">
                 <Users className="h-3 w-3" /> {participants.length}/{room.max_participants}
               </span>
