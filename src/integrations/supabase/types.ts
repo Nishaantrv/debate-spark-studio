@@ -14,6 +14,92 @@ export type Database = {
   }
   public: {
     Tables: {
+      debate_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          room_id: string
+          sender_avatar: string
+          sender_id: string
+          sender_username: string
+          side: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          room_id: string
+          sender_avatar?: string
+          sender_id: string
+          sender_username: string
+          side: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          room_id?: string
+          sender_avatar?: string
+          sender_id?: string
+          sender_username?: string
+          side?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "debate_messages_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "debate_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      debate_rooms: {
+        Row: {
+          category: string
+          created_at: string
+          description: string | null
+          host_avatar: string
+          host_id: string
+          host_username: string
+          id: string
+          max_participants: number
+          participant_count: number
+          status: string
+          topic: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          description?: string | null
+          host_avatar?: string
+          host_id: string
+          host_username: string
+          id?: string
+          max_participants?: number
+          participant_count?: number
+          status?: string
+          topic: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          host_avatar?: string
+          host_id?: string
+          host_username?: string
+          id?: string
+          max_participants?: number
+          participant_count?: number
+          status?: string
+          topic?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string
@@ -40,6 +126,38 @@ export type Database = {
           username?: string
         }
         Relationships: []
+      }
+      room_participants: {
+        Row: {
+          id: string
+          joined_at: string
+          room_id: string
+          side: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          joined_at?: string
+          room_id: string
+          side: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          joined_at?: string
+          room_id?: string
+          side?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_participants_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "debate_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

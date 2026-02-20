@@ -5,25 +5,64 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card } from "@/components/ui/card";
 import { CATEGORIES } from "@/data/mockData";
 import { toast } from "sonner";
 import { ArrowLeft, Copy } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/context/AuthContext";
 
 const CreateRoom = () => {
   const navigate = useNavigate();
+  const { user, profile } = useAuth();
   const [topic, setTopic] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
   const [maxParticipants, setMaxParticipants] = useState("6");
   const [created, setCreated] = useState(false);
-  const inviteLink = `${window.location.origin}/room/new-room-${Date.now()}`;
+  const [roomId, setRoomId] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleCreate = () => {
+  const inviteLink = `${window.location.origin}/room/${roomId}`;
+
+  const handleCreate = async () => {
     if (!topic.trim() || !category) {
       toast.error("Please fill in topic and category");
       return;
     }
+    if (!user || !profile) return;
+
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("debate_rooms")
+      .insert({
+        topic,
+        description,
+        category,
+        host_id: user.id,
+        host_username: profile.username,
+        host_avatar: profile.avatar_url,
+        max_participants: parseInt(maxParticipants),
+      })
+      .select("id")
+      .single();
+
+    if (error) {
+      toast.error("Failed to create room");
+      setLoading(false);
+      return;
+    }
+
+    // Auto-join as host on the "for" side
+    await supabase.from("room_participants").insert({
+      room_id: data.id,
+      user_id: user.id,
+      side: "for",
+    });
+
+    setRoomId(data.id);
     setCreated(true);
+    setLoading(false);
     toast.success("Room created!");
   };
 
@@ -62,8 +101,8 @@ const CreateRoom = () => {
                 <label className="text-sm font-medium text-foreground">Max Participants</label>
                 <Input type="number" value={maxParticipants} onChange={(e) => setMaxParticipants(e.target.value)} min="2" max="20" />
               </div>
-              <Button onClick={handleCreate} size="lg" className="w-full rounded-xl py-6 text-lg font-semibold glow-primary">
-                Create Room
+              <Button onClick={handleCreate} disabled={loading} size="lg" className="w-full rounded-xl py-6 text-lg font-semibold glow-primary">
+                {loading ? "Creating..." : "Create Room"}
               </Button>
             </div>
           ) : (
@@ -83,7 +122,7 @@ const CreateRoom = () => {
                   <Copy className="h-4 w-4" />
                 </Button>
               </div>
-              <Button onClick={() => navigate(`/room/new-room-${Date.now()}`)} className="w-full glow-primary">
+              <Button onClick={() => navigate(`/room/${roomId}`)} className="w-full glow-primary">
                 Enter Room
               </Button>
               <Button onClick={() => navigate("/dashboard")} variant="secondary" className="w-full">
@@ -96,8 +135,5 @@ const CreateRoom = () => {
     </div>
   );
 };
-
-// Need Card import
-import { Card } from "@/components/ui/card";
 
 export default CreateRoom;
