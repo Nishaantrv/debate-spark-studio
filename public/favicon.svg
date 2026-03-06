@@ -1,10 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <defs>
-    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#7c3aed"/>
-      <stop offset="100%" style="stop-color:#4f46e5"/>
-    </linearGradient>
-  </defs>
-  <rect width="64" height="64" rx="14" fill="url(#bg)"/>
-  <text x="32" y="44" font-family="Arial, sans-serif" font-size="36" font-weight="bold" fill="white" text-anchor="middle">D</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <rect width="64" height="64" rx="14" fill="#1a1a2e"/>
+  <path d="M16 20C16 18.9 16.9 18 18 18H30C31.1 18 32 18.9 32 20V30C32 31.1 31.1 32 30 32H22L18 36V32H18C16.9 32 16 31.1 16 30V20Z" fill="#4FC3F7"/>
+  <path d="M48 28C48 26.9 47.1 26 46 26H34C32.9 26 32 26.9 32 28V38C32 39.1 32.9 40 34 40H42L46 44V40H46C47.1 40 48 39.1 48 38V28Z" fill="#FF7043"/>
+  <circle cx="22" cy="25" r="1.5" fill="#1a1a2e"/>
+  <circle cx="26" cy="25" r="1.5" fill="#1a1a2e"/>
+  <circle cx="30" cy="25" r="1.5" fill="#1a1a2e" opacity="0.5"/>
+  <circle cx="38" cy="33" r="1.5" fill="#1a1a2e"/>
+  <circle cx="42" cy="33" r="1.5" fill="#1a1a2e"/>
+  <circle cx="46" cy="33" r="1.5" fill="#1a1a2e" opacity="0.5"/>
+  <text x="32" y="56" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" font-weight="bold" fill="#E0E0E0">AI</text>
 </svg>
